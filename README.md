@@ -11,3 +11,7 @@ based on [dgraziotin/osx-docker-lamp](https://github.com/dgraziotin/osx-docker-l
 ## features
 	WP-CLI
 	PHPMyAdmin
+
+## instructions
+	docker build -t docker-wp-lamp:latest <path-to-repo>
+	docker run -itp 80:80 -v ${PWD}/app:/var/www/html -v ${PWD}/mysql:/var/lib/mysql docker-wp-lamp:latest
