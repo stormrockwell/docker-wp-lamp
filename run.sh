@@ -13,6 +13,16 @@ fi
 
 sed -i -e "s/cfg\['blowfish_secret'\] = ''/cfg['blowfish_secret'] = '`date | md5sum`'/" /var/www/phpmyadmin/config.inc.php
 
+# If there's no mysql folder, create DB and user
+if [[ ! -d $VOLUME_HOME/mysql ]]; then
+    echo "=> An empty or uninitialized MySQL volume is detected in $VOLUME_HOME"
+    echo "=> Installing MySQL ..."
+    mysqld --initialize-insecure --explicit_defaults_for_timestamp=1 > /dev/null 2>&1
+    echo "=> Done!"
+else
+    echo "=> Using an existing volume of MySQL"
+fi
+
 if [ -n "$VAGRANT_OSX_MODE" ];then
     usermod -u $DOCKER_USER_ID www-data
     groupmod -g $(($DOCKER_USER_GID + 10000)) $(getent group $DOCKER_USER_GID | cut -d: -f1)
@@ -34,21 +44,15 @@ fi
 sed -i "s/bind-address.*/bind-address = 0.0.0.0/" /etc/mysql/my.cnf
 sed -i "s/user.*/user = www-data/" /etc/mysql/my.cnf
 
-# If there's no mysql folder, create DB and user
-if [[ ! -d $VOLUME_HOME/mysql ]]; then
-    echo "=> An empty or uninitialized MySQL volume is detected in $VOLUME_HOME"
-    echo "=> Installing MySQL ..."
-    mysql_install_db > /dev/null 2>&1
-    echo "=> Done!"  
-    /create_mysql_users.sh
-else
-    echo "=> Using an existing volume of MySQL"
-fi
-
 # Set alias for --allow-root so WP-CLI wont bug you
 echo "alias wp='/usr/local/bin/wp --allow-root'" > ~/.bashrc
 
 service apache2 start
 service mysql start
+
+# Create admin MySQL user
+mysql -uroot -e "CREATE USER IF NOT EXISTS 'admin'@'%' IDENTIFIED BY 'pass'"
+mysql -uroot -e "GRANT ALL PRIVILEGES ON *.* TO 'admin'@'%' WITH GRANT OPTION"
+mysql -uroot -e "FLUSH PRIVILEGES"
 
 /bin/bash

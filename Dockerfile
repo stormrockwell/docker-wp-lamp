@@ -23,7 +23,7 @@ RUN apt-get update && \
 	apt-get -y install wget git apache2 pwgen zip unzip \
 	php7.0 libapache2-mod-php7.0 php7.0-cli php7.0-common \
 	php7.0-mbstring php7.0-gd php7.0-intl php7.0-xml php7.0-mysql php7.0-mcrypt \
-	php7.0-zip && \
+	php7.0-zip curl php-curl && \
 	echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 RUN apt-get update && apt-get install -y mysql-server
@@ -54,9 +54,15 @@ RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli
 	&& mv wp-cli.phar /usr/local/bin/wp \
 	&& echo 'Installing WP-CLI'
 
-# config to enable .htaccess
+# add SSL
+RUN mkdir -p /etc/apache2/ssl
+COPY server.crt /etc/apache2/ssl/server.crt
+COPY server.key /etc/apache2/ssl/server.key
+
+# apache config
 ADD apache_default /etc/apache2/sites-available/000-default.conf
-RUN a2enmod rewrite
+ADD apache_default_ssl /etc/apache2/sites-available/localhost-ssl.conf
+RUN a2enmod rewrite ssl && a2ensite localhost-ssl
 
 # Configure /app folder with sample app
 RUN mkdir -p /app && rm -fr /var/www/html && ln -s /app /var/www/html
@@ -69,5 +75,5 @@ ENV PHP_POST_MAX_SIZE 10M
 # Add volumes for the app and MySql
 VOLUME  ["/etc/mysql", "/var/lib/mysql", "/app" ]
 
-EXPOSE 80 3306
+EXPOSE 80 3306 443
 CMD ["/run.sh"]
